@@ -952,3 +952,7 @@ read_video <- function(vpipe, cimg_array, nframes, width, height, block_size) {
     .Call(`_imager_read_video`, vpipe, cimg_array, nframes, width, height, block_size)
 }
 
+save_video <- function(vpipe, cimg_array, nframes, width, height, block_size) {
+    .Call(`_imager_save_video`, vpipe, cimg_array, nframes, width, height, block_size)
+}
+

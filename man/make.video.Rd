@@ -8,7 +8,8 @@
 make.video(dname, fname, pattern = "image-\%d.png", fps = 25,
   extra.args = "", verbose = FALSE)
 
-save.video(im, fname, ...)
+save.video(im, fname, fps = 25, extra.args = "", verbose = FALSE, ...,
+  block.size = 10000L)
 }
 \arguments{
 \item{dname}{name of a directory containing individual files}

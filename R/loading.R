@@ -381,18 +381,63 @@ make.video <- function(dname,fname,pattern="image-%d.png",fps=25,extra.args="",v
 
 #' @describeIn make.video Save a video using ffmpeg
 #' @export
-save.video <- function(im,fname,...)
+save.video <- function(im,fname,fps=25,extra.args="",verbose=FALSE,...,block.size=10000L)
 {
     if (!has.ffmpeg()) stop("Can't find ffmpeg. Please install.")
-    dd <- paste0(tempdir(),"/vid")
-    tryCatch({
-        dir.create(dd)
-        im <- if (is.imlist(im)) im else imsplit(im,"z") 
-        nms <- sprintf("%s/image-%i.png",dd,seq_along(im))
-        purrr::map2(im,nms,~ save.png(.x,.y))
-        make.video(dname=dd,fname=fname,...)
-    }, finally=unlink(dd,recursive=TRUE))
+    args <- sprintf("%s -framerate %.4d",extra.args,fps)
+    reso <- sprintf("-s:v %sx%s", dim(im)[1],dim(im)[2])
+    verbose.args <- ""
+    if(!verbose)
+        verbose.args <- "2>/dev/null"
+  
+    command <- sprintf("ffmpeg -pix_fmt rgb24 -f rawvideo %s %s -i - -y %s %s",reso,args,fname,verbose.args)
+    video.pipe <- pipe(command,open="wb")
+    save_video(video.pipe,
+               im,
+               dim(im)[3L],
+               dim(im)[1L],
+               dim(im)[2L],
+               block.size)
+    close(video.pipe)
+}
+
+logi <- function(z) exp(z) / (1 + exp(z))
+circi <- function(x1, c1, x2, c2, r = 20L) exp(-(((x1 - c1) / r) ^ 2 + ((x2 - c2) / r) ^ 2))
+
+create.test.video <- function(W = 640L,
+                              H = 360L,
+                              NF = 250L)
+{
+    I <- rep(1:W, length.out = W * H)
+    J <- rep(1:H, each = W)
+    H0 <- array(0,
+                dim = c(W,
+                        H,
+                        3L))
+    I1 <- 222L
+    J1 <- 111L
+    I2 <- 333L
+    J2 <- 222L
+    I3 <- 222L
+    J3 <- 222L
     
+    H0[, , 1] <- 2 * circi(I, I1, J, J1) + 3 * abs(I - I2) / W - 2 * abs(J - J3) / H
+    H0[, , 2] <- 2 * circi(I, I2, J, J2) - abs(I - I3) / W + 2 * abs(J - J1) / H
+    H0[, , 3] <- 2 * circi(I, I3, J, J3) + as.integer(I > I3)
+    
+    RES <- array(0,
+                 dim = c(W,
+                         H,
+                         NF,
+                         3L))
+    diff <- 0.001
+    H <- H0
+    for(i in NF:1L)
+    {
+        RES[, , i, ] <- as.vector(H)
+        H <- H + rnorm(length(H0), sd = diff * abs(NF - i + 1L))
+    }
+    VID <- as.cimg(logi(RES))
 }
 
 #borrowed from pkgmaker::file_extension
